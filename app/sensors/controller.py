@@ -67,9 +67,9 @@ router = APIRouter(
 
 # 🙋🏽‍♀️ Add here the route to get a list of sensors near to a given location
 @router.get("/near")
-def get_sensors_near(latitude: float, longitude: float,radius: float, db: Session = Depends(get_db),mongodb_client: MongoDBClient = Depends(get_mongodb_client), redis: RedisClient = Depends(get_redis_client)):
+def get_sensors_near(latitude: float, longitude: float,radius: float, db: Session = Depends(get_db),mongodb_client: MongoDBClient = Depends(get_mongodb_client), redis: RedisClient = Depends(get_redis_client), timescale: Timescale = Depends(get_timescale)):
     #raise HTTPException(status_code=404, detail="Not implemented")
-    return repository.get_sensors_near(db=db, mongodb=mongodb_client, redis=redis,latitude=latitude, longitude=longitude,radius=radius)
+    return repository.get_sensors_near(db=db, mongodb=mongodb_client, redis=redis,latitude=latitude, longitude=longitude,radius=radius, timescale=timescale)
 
 
 # 🙋🏽‍♀️ Add here the route to search sensors by query to Elasticsearch
@@ -113,8 +113,7 @@ def delete_sensor(sensor_id: int, db: Session = Depends(get_db), mongodb_client:
     db_sensor = repository.get_sensor(db, sensor_id)
     if db_sensor is None:
         raise HTTPException(status_code=404, detail="Sensor not found")
-    raise HTTPException(status_code=404, detail="Not implemented")
- #   return repository.delete_sensor(db=db, sensor_id=sensor_id)
+    return repository.delete_sensor(db=db, sensor_id=sensor_id)
     
 
 # 🙋🏽‍♀️ Add here the route to update a sensor

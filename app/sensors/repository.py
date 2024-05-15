@@ -320,7 +320,7 @@ def get_sensor_complete_information(db: Session, sensor_id: int, mongo_db=MongoD
     sensor_dict = sensor_instance.dict(exclude_none=True)
     return sensor_dict
 
-def get_sensors_near(db: Session, mongodb: MongoDBClient, redis: RedisClient, latitude: float, longitude: float, radius: float):
+def get_sensors_near(db: Session, mongodb: MongoDBClient, redis: RedisClient, latitude: float, longitude: float, radius: float, timescale : Timescale):
     
     query = create_query(latitude, longitude, radius)
 
@@ -333,7 +333,7 @@ def get_sensors_near(db: Session, mongodb: MongoDBClient, redis: RedisClient, la
         sensor_id_value = sensors["name"]
         sensor_name = get_sensor_by_name(db, sensor_id_value)
         sensor_id = sensor_name.id
-        sensor_schema = get_data(db=db, sensor_id=sensor_id, mongo_db=mongodb, redis=redis)
+        sensor_schema = get_data(db=db, sensor_id=sensor_id,  from_date=None, to=None, bucket=None, timescale=timescale, mongodb=mongodb, redis=redis)
         sensors_list.append(sensor_schema)
         
 
@@ -403,14 +403,6 @@ def search_sensors(db: Session, mongodb: MongoDBClient, query: str, size: int = 
 
     es.close()
     return sensors_retrived
-
-def delete_sensor(db: Session, sensor_id: int):
-    db_sensor = db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
-    if db_sensor is None:
-        raise HTTPException(status_code=404, detail="Sensor not found")
-    db.delete(db_sensor)
-    db.commit()
-    return db_sensor
 
 def delete_sensor(db: Session, sensor_id: int):
     db_sensor = db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
