@@ -182,68 +182,87 @@ def record_data(db: Session, redis: RedisClient, sensor_id: int, data: schemas.S
 
 
 
-def get_data(db: Session, sensor_id: int, from_date: str, to:str, bucket:str,  timescale: Timescale):
+def get_data(db: Session, sensor_id: int, from_date: str, to:str, bucket:str,  timescale: Timescale, mongodb: MongoDBClient, redis: RedisClient):
     # Trobem el sensor corresponent a la id
     db_sensor = db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
 
 
     
     # Creem les claus compostes per cada un dels atributs
-    temp = "sensor" + str(id) + ":temperatura"
-    hum = "sensor" + str(id) + ":humidity"
-    bat = "sensor" + str(id) + ":battery_level"
-    seen = "sensor" + str(id) + ":last_seen"
-    vel = "sensor" + str(id) + ":velocity"
+    temp = "sensor" + str(sensor_id) + ":temperatura"
+    hum = "sensor" + str(sensor_id) + ":humidity"
+    bat = "sensor" + str(sensor_id) + ":battery_level"
+    seen = "sensor" + str(sensor_id) + ":last_seen"
+    vel = "sensor" + str(sensor_id) + ":velocity"
+
+
+    sensor_name = db_sensor.name
+
+    col = connect_collection(mongodb=mongodb)
+
+    documental_sensor = col.find_one({"name": sensor_name})
+
+
+    last_seen = redis.get(seen)
+    battery_level = redis.get(bat)
+    temperature=redis.get(temp)
+    humidity=redis.get(hum)
+    velocity=redis.get(vel)
 
     timescale.commit()
-    query_create = f"""CREATE MATERIALIZED VIEW IF NOT EXISTS conditions_summary_{bucket}
-        WITH (timescaledb.continuous) AS
-        SELECT sensor_id,
-        time_bucket(INTERVAL '1 {bucket}', last_seen) AS bucket,
-        AVG(temperature) AS temp_avg
-        FROM sensor_data
-        GROUP BY sensor_id, bucket;
-        """
+    if bucket is not None:
+        query_create = f"""CREATE MATERIALIZED VIEW IF NOT EXISTS conditions_summary_{bucket}
+            WITH (timescaledb.continuous) AS
+            SELECT sensor_id,
+            time_bucket(INTERVAL '1 {bucket}', last_seen) AS bucket,
+            AVG(temperature) AS temp_avg
+            FROM sensor_data
+            GROUP BY sensor_id, bucket;
+            """
 
-    timescale.execute(query_create)
-    timescale.commit()
+        timescale.execute(query_create)
+        timescale.commit()
     
     if bucket == "week":
         from_ = datetime.fromisoformat(from_date[:-1])
         from_date = from_ - timedelta(days=from_.weekday())
+    if bucket is not None:
+        query = f"""
+            SELECT *
+            FROM conditions_summary_{bucket}
+            WHERE sensor_id = {sensor_id}
+            AND bucket >= '{from_date}'
+            AND bucket <= '{to}';
+        """
 
-    query = f"""
-        SELECT *
-        FROM conditions_summary_{bucket}
-        WHERE sensor_id = {sensor_id}
-        AND bucket >= '{from_date}'
-        AND bucket <= '{to}';
-    """
-
-    timescale.execute(query)
+        timescale.execute(query)
 
 
-    cursor = timescale.getCursor()
-    results = cursor.fetchall()
-    return results
-    """
-    return schemas.Sensor(
-        id=db_sensor.id,
-        name=db_sensor.name,
-        latitude=documental_sensor["location"]["coordinates"][1],
-        longitude=documental_sensor["location"]["coordinates"][0],
-        joined_at=str(db_sensor.joined_at),
-        last_seen=last_seen,
-        type=documental_sensor["type"],
-        mac_address=documental_sensor["mac_address"],
-        battery_level=battery_level,
-        temperature=temperature,
-        humidity=humidity,
-        velocity=velocity,
-        description=documental_sensor["description"]
-        
-    )
-    """
+        cursor = timescale.getCursor()
+        results = cursor.fetchall()
+        return results
+    else: 
+        return schemas.Sensor(
+            id=db_sensor.id,
+            name=db_sensor.name,
+            latitude=documental_sensor["location"]["coordinates"][1],
+            longitude=documental_sensor["location"]["coordinates"][0],
+            joined_at=str(db_sensor.joined_at),
+            last_seen=redis.get(seen),
+            type=documental_sensor["type"],
+            mac_address=documental_sensor["mac_address"],
+            manufacturer=documental_sensor["manufacturer"],
+            model=documental_sensor["model"],
+            serie_number=documental_sensor["serie_number"],
+            firmware_version=documental_sensor["firmware_version"],
+            battery_level=redis.get(bat),
+            temperature=redis.get(temp),
+            humidity=redis.get(hum),
+            velocity=redis.get(vel),
+            description=documental_sensor["description"]
+            
+        )
+    
 
 def add_document(mongo_db: MongoDBClient, sensor: schemas.SensorCreate):
     

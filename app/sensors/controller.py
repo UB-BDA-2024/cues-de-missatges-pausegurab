@@ -127,11 +127,11 @@ def record_data(sensor_id: int, data: schemas.SensorData,db: Session = Depends(g
 
 # 🙋🏽‍♀️ Add here the route to get data from a sensor
 @router.get("/{sensor_id}/data")
-def get_data(sensor_id: int, from_date: str = Query(None, alias = "from"), to: str = Query(None), bucket: str = Query(None), db: Session = Depends(get_db), timescale: Timescale = Depends(get_timescale)):    
+def get_data(sensor_id: int, from_date: str = Query(None, alias = "from"), to: str = Query(None), bucket: str = Query(None), db: Session = Depends(get_db), timescale: Timescale = Depends(get_timescale), mongodb: MongoDBClient = Depends(get_mongodb_client), redis: RedisClient = Depends(get_redis_client)):    
     db_sensor = repository.get_sensor(db, sensor_id)
     if db_sensor is None:
         raise HTTPException(status_code=404, detail="Sensor not found")
-    return repository.get_data(db=db,sensor_id=sensor_id,from_date = from_date, to=to, bucket=bucket, timescale = timescale)
+    return repository.get_data(db=db,sensor_id=sensor_id,from_date = from_date, to=to, bucket=bucket, timescale = timescale, mongodb=mongodb, redis=redis)
     #return repository.get_data(redis=redis_client, sensor_id=sensor_id, data=data) 
 
 @router.get("/temperature/values")

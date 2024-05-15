@@ -24,3 +24,6 @@ class MongoDBClient:
     
     def clearDb(self,database):
         self.client.drop_database(database)
+
+    def clearCollection(self, collection):
+        self.database[collection].drop()

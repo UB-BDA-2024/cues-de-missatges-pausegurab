@@ -18,7 +18,8 @@ def clear_dbs():
      redis.clearAll()
      redis.close()
      mongo = MongoDBClient(host="mongodb")
-     mongo.clearDb("sensors")
+     dr = mongo.getDatabase("data")
+     mongo.clearCollection("sensors")
      mongo.close()
 
 def test_create_sensor_temperatura():
