@@ -10,7 +10,7 @@ from app.cassandra_client import CassandraClient
 import json
 
 
-from .tests import models, schemas
+from app.sensors import models, schemas
 
 def get_sensor(db: Session, sensor_id: int) -> Optional[models.Sensor]:
     return db.query(models.Sensor).filter(models.Sensor.id == sensor_id).first()
