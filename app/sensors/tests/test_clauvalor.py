@@ -78,5 +78,3 @@ def test_get_sensor_data_not_exists():
     response = client.get("/sensors/2/data")
     assert response.status_code == 404
     assert "Sensor not found" in response.text
-
-    
